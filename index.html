@@ -356,37 +356,37 @@ async function doLogin() {
 }
 
 function logout() {
-  me = null; tasks = [];
+  me = null;
   show('sc-login');
   document.getElementById('sel-user').value = '';
 }
 
 // ---- LOAD ----
-async function loadMyTasks(refresh) {
-  if (!refresh) { renderEmp(); return; }
-  setDot(me, 'syncing');
+async function fetchTasks(who) {
+  setDot(who, 'syncing');
   try {
     const res = await jsonp({ action: 'getTasks' });
-    tasks = res.tasks || [];
-    setDot(me, 'ok');
+    tasks = (res.tasks || []).map(t => ({
+      ...t,
+      progress: Number(t.progress) || 0,
+      prevProgress: Number(t.prevProgress) || 0,
+    }));
+    setDot(who, 'ok');
+    return true;
   } catch(e) {
-    setDot(me, 'error');
+    setDot(who, 'error');
     showToast('เชื่อมต่อไม่ได้ — ลองรีเฟรชอีกครั้ง');
+    return false;
   }
+}
+
+async function loadMyTasks(refresh) {
+  if (refresh) await fetchTasks(me);
   renderEmp();
 }
 
 async function loadAdmin(refresh) {
-  if (!refresh) { renderAdmin(); return; }
-  setDot('admin', 'syncing');
-  try {
-    const res = await jsonp({ action: 'getTasks' });
-    tasks = res.tasks || [];
-    setDot('admin', 'ok');
-  } catch(e) {
-    setDot('admin', 'error');
-    showToast('เชื่อมต่อไม่ได้ — ลองรีเฟรชอีกครั้ง');
-  }
+  if (refresh) await fetchTasks('admin');
   renderAdmin();
 }
 
@@ -603,14 +603,9 @@ async function saveTask() {
 
   try {
     await jsonp({ action: 'saveTask', task: JSON.stringify(task) });
-    if (editId) {
-      const idx = tasks.findIndex(x=>x.id===editId);
-      if (idx>=0) tasks[idx] = task;
-    } else {
-      tasks.push(task);
-    }
     closeModal();
     showToast('✓ บันทึกเรียบร้อยแล้ว');
+    await fetchTasks(me);
     renderEmp();
   } catch(e) {
     showToast('บันทึกไม่สำเร็จ กรุณาลองใหม่');
@@ -624,8 +619,8 @@ async function delTask(id) {
   if (!confirm('ลบงานนี้ใช่มั้ย?')) return;
   try {
     await jsonp({ action: 'deleteTask', id });
-    tasks = tasks.filter(t=>t.id!==id);
     showToast('ลบเรียบร้อยแล้ว');
+    await fetchTasks(me);
     renderEmp();
   } catch(e) {
     showToast('ลบไม่สำเร็จ กรุณาลองใหม่');
