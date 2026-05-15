@@ -238,7 +238,7 @@ input:focus,select:focus,textarea:focus{border-color:#534AB7;box-shadow:0 0 0 2p
 <div class="toast" id="toast"></div>
 
 <script>
-const API = 'https://script.google.com/macros/s/AKfycbwIhN6M5l5CCm0oeZIZnEti4p2v9LSnZfVsr22WVfshWCBBmT0nbF87iVtZaDnLp4pIOw/exec';
+const API = 'https://script.google.com/macros/s/AKfycbzbjYdRnX5J6nTO9s9gL-5t7-8wjhT3WB0Y6C9FEGdOT78HEU95MfAJ6OfF9O-tFQVP_g/exec';
 
 const EMP = {
   e1:{name:'นภดล ละมุนเมือง',pos:'สถาปนิกชำนาญการพิเศษ',bg:'#EEEDFE',tc:'#3C3489'},
@@ -286,7 +286,7 @@ function jsonp(params) {
     const timeout = setTimeout(() => {
       delete window[cbName];
       reject(new Error('timeout'));
-    }, 15000);
+    }, 20000);
 
     window[cbName] = function(data) {
       clearTimeout(timeout);
@@ -295,14 +295,23 @@ function jsonp(params) {
       resolve(data);
     };
 
-    params.callback = cbName;
-    const qs = Object.entries(params).map(([k,v]) => `${k}=${encodeURIComponent(v)}`).join('&');
+    const parts = [`callback=${cbName}`];
+    for (const [k, v] of Object.entries(params)) {
+      if (k === 'task') {
+        // encode JSON ที่มีภาษาไทยด้วย encodeURIComponent แบบ safe
+        parts.push(`${k}=${encodeURIComponent(v)}`);
+      } else {
+        parts.push(`${k}=${encodeURIComponent(v)}`);
+      }
+    }
+
     const script = document.createElement('script');
     script.id = 'jsonp-' + cbName;
-    script.src = `${API}?${qs}`;
+    script.src = `${API}?${parts.join('&')}`;
     script.onerror = () => {
       clearTimeout(timeout);
       delete window[cbName];
+      script.remove();
       reject(new Error('script error'));
     };
     document.head.appendChild(script);
