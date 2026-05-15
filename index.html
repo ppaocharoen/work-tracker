@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ระบบติดตามงาน — กองช่าง</title>
+<title>ระบบติดตามงาน — ส่วนควบคุมการก่อสร้าง</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Sarabun',sans-serif;background:#F5F4F0;color:#1A1A18;font-size:15px}
@@ -67,7 +67,30 @@ input:focus,select:focus,textarea:focus{border-color:#534AB7;box-shadow:0 0 0 2p
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1A1A18;color:#fff;padding:9px 20px;border-radius:8px;font-size:13px;z-index:999;opacity:0;transition:opacity 0.3s;pointer-events:none;white-space:nowrap}
 .toast.show{opacity:1}
 </style>
-<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+@media print {
+  body { background: #fff !important; font-size: 11px; }
+  .app { max-width: 100%; padding: 0 8px; }
+  .sync-bar, .tabs, #adm-all .btn, button { display: none !important; }
+  .card { break-inside: avoid; border: 1px solid #ddd !important; box-shadow: none; margin-bottom: 6px; padding: 8px !important; }
+  #adm-team { display: block !important; }
+  #adm-all { display: block !important; }
+  .metrics { break-inside: avoid; }
+  .print-header { display: block !important; }
+  .stacked-bar { border: 1px solid #ddd; }
+  .tag { border: 1px solid #ddd; }
+}
+.print-header {
+  display: none;
+  text-align: center;
+  padding: 12px 0 8px;
+  border-bottom: 2px solid #333;
+  margin-bottom: 12px;
+}
+.print-header h2 { font-size: 15px; font-weight: 700; margin-bottom: 2px; }
+.print-header p { font-size: 11px; color: #555; }
+.section-title { font-size: 13px; font-weight: 700; margin: 14px 0 6px; padding-bottom: 4px; border-bottom: 1px solid #ddd; }
+</style>
 </head>
 <body>
 <div class="app">
@@ -77,7 +100,7 @@ input:focus,select:focus,textarea:focus{border-color:#534AB7;box-shadow:0 0 0 2p
   <div class="login-wrap">
     <div class="card">
       <p style="font-size:20px;font-weight:600;margin-bottom:4px">ระบบติดตามงาน</p>
-      <p style="font-size:13px;color:#6B6A65;margin-bottom:1.5rem">กองช่าง — ข้อมูลบันทึกใน Google Sheets</p>
+      <p style="font-size:13px;color:#6B6A65;margin-bottom:1.5rem">ส่วนควบคุมการก่อสร้าง สำนักช่าง เทศบาลนครอุดรธานี</p>
       <span class="flabel">เลือกชื่อของคุณ</span>
       <select id="sel-user">
         <option value="">-- เลือกผู้ใช้งาน --</option>
@@ -126,6 +149,10 @@ input:focus,select:focus,textarea:focus{border-color:#534AB7;box-shadow:0 0 0 2p
 
 <!-- ADMIN -->
 <div id="sc-admin" class="hidden">
+  <div class="print-header">
+    <h2>รายงานสรุปงาน — ส่วนควบคุมการก่อสร้าง สำนักช่าง เทศบาลนครอุดรธานี</h2>
+    <p id="print-date"></p>
+  </div>
   <div class="sync-bar">
     <span class="dot" id="dot-adm"></span>
     <span id="sync-txt-adm">พร้อมใช้งาน</span>
@@ -137,7 +164,10 @@ input:focus,select:focus,textarea:focus{border-color:#534AB7;box-shadow:0 0 0 2p
       <h1>Dashboard หัวหน้างาน</h1>
       <span class="badge badge-teal">ภาพรวมทีม</span>
     </div>
-    <button class="btn btn-sm" onclick="logout()">ออกจากระบบ</button>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-sm" style="background:#0F6E56;color:#fff;border-color:#0F6E56" onclick="exportPDF()">📄 ออกรายงาน PDF</button>
+      <button class="btn btn-sm" onclick="logout()">ออกจากระบบ</button>
+    </div>
   </div>
   <div class="metrics">
     <div class="mc"><p class="mc-label">งานทั้งหมด</p><p class="mc-val" id="am-total">0</p></div>
@@ -149,8 +179,12 @@ input:focus,select:focus,textarea:focus{border-color:#534AB7;box-shadow:0 0 0 2p
     <button class="tab active" onclick="switchTab('team',this)">ภาพรวมทีม</button>
     <button class="tab" onclick="switchTab('all',this)">งานทั้งหมด</button>
   </div>
-  <div id="adm-team"><div class="card" id="adm-team-list"></div></div>
-  <div id="adm-all" class="hidden">
+  <div id="adm-team">
+    <p class="section-title">ภาพรวมบุคลากร</p>
+    <div class="card" id="adm-team-list"></div>
+  </div>
+  <div id="adm-all">
+    <p class="section-title">รายการงานทั้งหมด</p>
     <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
       <select id="fil-emp" onchange="renderAdminAll()" style="flex:1;min-width:130px"><option value="">บุคลากรทั้งหมด</option></select>
       <select id="fil-cat" onchange="renderAdminAll()" style="flex:1;min-width:130px">
@@ -527,13 +561,27 @@ function renderAdminAll() {
   el.innerHTML = all.length ? all.map(t=>tCard(t,true)).join('') : '<div class="empty">ไม่พบงานที่ตรงกับเงื่อนไข</div>';
 }
 
+function exportPDF() {
+  // แสดง print header พร้อมวันที่
+  const now = new Date();
+  const dateStr = `วันที่พิมพ์: ${now.toLocaleDateString('th-TH', {year:'numeric',month:'long',day:'numeric'})} เวลา ${now.toLocaleTimeString('th-TH', {hour:'2-digit',minute:'2-digit'})} น.`;
+  document.getElementById('print-date').textContent = dateStr;
+
+  // แสดง section งานทั้งหมดก่อน print
+  document.getElementById('adm-all').classList.remove('hidden');
+  renderAdminAll();
+
+  setTimeout(() => {
+    window.print();
+  }, 300);
+}
+
 function switchTab(tab, el) {
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   el.classList.add('active');
   document.getElementById('adm-team').classList[tab==='team'?'remove':'add']('hidden');
   document.getElementById('adm-all').classList[tab==='all'?'remove':'add']('hidden');
 }
-
 // ---- MODAL ----
 function updateSubCat() {
   const cat = document.getElementById('f-cat').value;
