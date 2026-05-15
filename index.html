@@ -71,14 +71,18 @@ input:focus,select:focus,textarea:focus{border-color:#534AB7;box-shadow:0 0 0 2p
 @media print {
   body { background: #fff !important; font-size: 11px; }
   .app { max-width: 100%; padding: 0 8px; }
-  .sync-bar, .tabs, #adm-all .btn, button { display: none !important; }
+  .sync-bar, .tabs, button { display: none !important; }
   .card { break-inside: avoid; border: 1px solid #ddd !important; box-shadow: none; margin-bottom: 6px; padding: 8px !important; }
   #adm-team { display: block !important; }
   #adm-all { display: block !important; }
   .metrics { break-inside: avoid; }
   .print-header { display: block !important; }
-  .stacked-bar { border: 1px solid #ddd; }
-  .tag { border: 1px solid #ddd; }
+  /* แก้ให้กราฟ stacked bar แสดงใน PDF */
+  .stacked-bar { background: #eee !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .bar-prev { background: #AFA9EC !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .bar-new { background: #534AB7 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .tag { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .legend-dot { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
 .print-header {
   display: none;
@@ -140,9 +144,24 @@ input:focus,select:focus,textarea:focus{border-color:#534AB7;box-shadow:0 0 0 2p
     <div class="mc"><p class="mc-label">ส่งงานพัสดุ</p><p class="mc-val" id="em-done" style="color:#0F6E56">0</p></div>
     <div class="mc"><p class="mc-label">เฉลี่ย (วัน)</p><p class="mc-val" id="em-avg" style="color:#185FA5">0</p></div>
   </div>
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
     <p style="font-size:14px;font-weight:600">รายการงาน</p>
     <button class="btn btn-primary btn-sm" onclick="openAdd()">+ เพิ่มงาน</button>
+  </div>
+  <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+    <select id="emp-sort" onchange="renderEmp()" style="flex:1;min-width:130px;font-size:12px;padding:5px 8px">
+      <option value="priority">เรียงตามความด่วน</option>
+      <option value="date">เรียงตามวันที่รับงาน</option>
+      <option value="cat">เรียงตามหมวดงาน</option>
+      <option value="status">เรียงตามสถานะ</option>
+    </select>
+    <select id="emp-filter-cat" onchange="renderEmp()" style="flex:1;min-width:130px;font-size:12px;padding:5px 8px">
+      <option value="">หมวดงานทั้งหมด</option>
+      <option value="โรงเรียน">งานโรงเรียน</option>
+      <option value="หน่วยงานภายใน">งานหน่วยงานภายใน</option>
+      <option value="หน่วยงานภายนอก">งานหน่วยงานภายนอก</option>
+      <option value="ควบคุมการก่อสร้าง">งานส่วนควบคุมฯ</option>
+    </select>
   </div>
   <div id="emp-list"></div>
 </div>
@@ -488,20 +507,56 @@ function tCard(t, isAdm) {
 
 // ---- RENDER ----
 function renderEmp() {
-  const mt = myTasks();
-  const active = mt.filter(t=>t.status!=='ส่งงานพัสดุ').length;
-  const done = mt.filter(t=>t.status==='ส่งงานพัสดุ').length;
-  const days = mt.filter(t=>t.startDate).map(t=>daysSince(t.startDate));
+  const sortBy = document.getElementById('emp-sort')?.value || 'priority';
+  const filterCat = document.getElementById('emp-filter-cat')?.value || '';
+
+  let mt = myTasks();
+  if (filterCat) mt = mt.filter(t => t.cat === filterCat);
+
+  const active = myTasks().filter(t=>t.status!=='ส่งงานพัสดุ').length;
+  const done = myTasks().filter(t=>t.status==='ส่งงานพัสดุ').length;
+  const days = myTasks().filter(t=>t.startDate).map(t=>daysSince(t.startDate));
   const avg = days.length ? Math.round(days.reduce((a,b)=>a+b,0)/days.length) : 0;
-  document.getElementById('em-total').textContent = mt.length;
+  document.getElementById('em-total').textContent = myTasks().length;
   document.getElementById('em-active').textContent = active;
   document.getElementById('em-done').textContent = done;
   document.getElementById('em-avg').textContent = avg;
+
+  // sort
+  if (sortBy === 'priority') {
+    mt.sort((a,b)=>(PRI_ORDER[a.priority]||3)-(PRI_ORDER[b.priority]||3)||Number(b.ts)-Number(a.ts));
+  } else if (sortBy === 'date') {
+    mt.sort((a,b)=>(a.startDate||'').localeCompare(b.startDate||''));
+  } else if (sortBy === 'cat') {
+    mt.sort((a,b)=>(a.cat||'').localeCompare(b.cat||'')||(a.subcat||'').localeCompare(b.subcat||''));
+  } else if (sortBy === 'status') {
+    const statusOrder = {'สำรวจ/ออกแบบ':0,'เขียนแบบ/ปรับแก้แบบ':1,'ประมาณราคา':2,'คกก.จัดทำรูปแบบ':3,'คกก.กำหนดราคากลาง':4,'ปรับราคากลางปัจจุบัน':5,'คีย์ข้อมูลราคากลาง':6,'ส่งงานพัสดุ':7};
+    mt.sort((a,b)=>(statusOrder[a.status]||0)-(statusOrder[b.status]||0));
+  }
+
   const el = document.getElementById('emp-list');
-  if (!mt.length) { el.innerHTML='<div class="empty">ยังไม่มีงาน<br>กด "+ เพิ่มงาน" เพื่อเริ่ม</div>'; return; }
-  el.innerHTML = mt
-    .sort((a,b)=>(PRI_ORDER[a.priority]||3)-(PRI_ORDER[b.priority]||3)||Number(b.ts)-Number(a.ts))
-    .map(t=>tCard(t,false)).join('');
+  if (!mt.length) {
+    el.innerHTML = filterCat
+      ? '<div class="empty">ไม่มีงานในหมวดนี้</div>'
+      : '<div class="empty">ยังไม่มีงาน<br>กด "+ เพิ่มงาน" เพื่อเริ่ม</div>';
+    return;
+  }
+
+  // ถ้า sort ตามหมวด ให้แสดงหัวกลุ่ม
+  if (sortBy === 'cat' && !filterCat) {
+    let html = '';
+    let lastCat = null;
+    mt.forEach(t => {
+      if (t.cat !== lastCat) {
+        html += `<p style="font-size:12px;font-weight:600;color:#534AB7;margin:12px 0 6px;padding-bottom:4px;border-bottom:1px solid #E2E0D9">${t.cat||'ไม่ระบุหมวด'}</p>`;
+        lastCat = t.cat;
+      }
+      html += tCard(t, false);
+    });
+    el.innerHTML = html;
+  } else {
+    el.innerHTML = mt.map(t=>tCard(t,false)).join('');
+  }
 }
 
 function renderAdmin() {
