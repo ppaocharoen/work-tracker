@@ -48,10 +48,18 @@ input:focus,select:focus,textarea:focus{border-color:var(--primary);box-shadow:0
 .flabel{font-size:12px;color:var(--text2);display:block;margin-bottom:4px;margin-top:10px}
 .flabel:first-child{margin-top:0}
 .card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:1rem 1.1rem;margin-bottom:10px;box-shadow:var(--shadow)}
-.task-hdr{display:flex;align-items:flex-start;gap:8px}
-.task-title{font-size:14px;font-weight:600}
-.task-desc{font-size:12px;color:var(--text2);margin-top:3px}
+.task-hdr{display:flex;align-items:flex-start;gap:8px;flex-wrap:nowrap}
+.task-info{flex:1;min-width:0}
+.task-title{font-size:14px;font-weight:600;word-break:break-word;line-height:1.35}
+.task-desc{font-size:12px;color:var(--text2);margin-top:3px;word-break:break-word}
+.task-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
+.task-actions{display:flex;gap:4px;flex-shrink:0;flex-wrap:wrap;align-items:flex-start;justify-content:flex-end}
 .task-meta{font-size:11px;color:var(--text3);margin-top:6px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+/* mobile: ปุ่มลงแถวล่าง */
+@media(max-width:520px){
+  .task-hdr{flex-direction:column;gap:0}
+  .task-actions{width:100%;justify-content:flex-end;padding-top:8px;margin-top:6px;border-top:1px solid var(--border)}
+}
 /* emp-row responsive */
 .emp-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
 .emp-row:last-child{border-bottom:none}
@@ -245,15 +253,15 @@ body.dark .days-badge{background:#1A3550;color:#7DB8E8}
   <div id="adm-all" class="hidden">
     <p class="section-title">รายการงานทั้งหมด</p>
     <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
-      <select id="fil-emp" onchange="renderAdminAll()" style="flex:1;min-width:120px;font-size:12px;padding:5px 8px"><option value="">บุคลากรทั้งหมด</option></select>
-      <select id="fil-status" onchange="renderAdminAll()" style="flex:1;min-width:120px;font-size:12px;padding:5px 8px">
+      <select id="fil-emp" onchange="renderAdminAll()" style="flex:1;min-width:110px;font-size:12px;padding:5px 8px"><option value="">บุคลากรทั้งหมด</option></select>
+      <select id="fil-status" onchange="renderAdminAll()" style="flex:1;min-width:110px;font-size:12px;padding:5px 8px">
         <option value="">สถานะทั้งหมด</option>
         <option>สำรวจ/ออกแบบ</option><option>เขียนแบบ/ปรับแก้แบบ</option>
         <option>ประมาณราคา</option><option>คกก.จัดทำรูปแบบ</option>
         <option>คกก.กำหนดราคากลาง</option><option>ปรับราคากลางปัจจุบัน</option>
         <option>คีย์ข้อมูลราคากลาง</option><option>ส่งงานพัสดุ</option>
       </select>
-      <select id="fil-sort" onchange="renderAdminAll()" style="flex:1;min-width:120px;font-size:12px;padding:5px 8px">
+      <select id="fil-sort" onchange="renderAdminAll()" style="flex:1;min-width:110px;font-size:12px;padding:5px 8px">
         <option value="priority">เรียงตามความด่วน</option>
         <option value="emp">เรียงตามคน</option>
         <option value="status">เรียงตามสถานะ</option>
@@ -504,28 +512,30 @@ function tCard(t,isAdm){
   const days=daysSince(t.startDate);
   const subLabel=t.subcat&&t.subcat!=='อื่นๆ : ระบุในชื่องาน'?t.subcat:'';
   const isDone=t.done===true;
-  return `<div class="card" style="border-left:3px solid ${isDone?'#1D9E75':pri.border};${isDone?'opacity:0.7':''}">
+  const startDisplay=t.startDate?t.startDate.toString().slice(0,10):'';
+  return `<div class="card" style="border-left:3px solid ${isDone?'#1D9E75':pri.border};${isDone?'opacity:0.75':''}">
     <div class="task-hdr">
-      <div style="flex:1;min-width:0">
+      <div class="task-info">
         ${isAdm&&emp?`<p style="font-size:11px;color:var(--text2);margin-bottom:2px">${emp.name} · ${emp.pos}</p>`:''}
         <p style="font-size:11px;color:var(--text2);margin-bottom:2px">${t.cat||''}${subLabel?' · '+subLabel:''}</p>
-        <p class="task-title">${isDone?'✅ ':''} ${t.name}</p>
+        <p class="task-title">${isDone?'✅ ':''}${t.name}</p>
         ${t.desc?`<p class="task-desc">${t.desc}</p>`:''}
+        <div class="task-tags">
+          <span class="tag" style="background:${pri.bg};color:${pri.tc}">${pri.label}</span>
+          <span class="tag" style="background:${sc.bg};color:${sc.tc}">${t.status}</span>
+          ${isDone&&!isAdm?`<span class="tag" style="background:#D1FAE5;color:#065F46">จบงานแล้ว</span>`:''}
+        </div>
       </div>
-      <div style="display:flex;gap:5px;flex-shrink:0;align-items:flex-start;flex-wrap:wrap;justify-content:flex-end">
-        <span class="tag" style="background:${pri.bg};color:${pri.tc}">${pri.label}</span>
-        <span class="tag" style="background:${sc.bg};color:${sc.tc}">${t.status}</span>
-        ${!isAdm&&!isDone?`
-        <button class="btn btn-sm" style="font-size:11px" onclick="openProgress('${t.id}')" title="อัปเดตความก้าวหน้า">📊</button>
+      ${!isAdm&&!isDone?`<div class="task-actions">
+        <button class="btn btn-sm" onclick="openProgress('${t.id}')" title="อัปเดตความก้าวหน้า">📊</button>
         <button class="btn btn-sm" onclick="openEdit('${t.id}')" title="แก้ไขรายละเอียด">✏️</button>
-        <button class="btn btn-sm" style="background:#E1F5EE;color:#085041;border-color:#085041;font-size:11px" onclick="finishTask('${t.id}')" title="จบงาน">✅ จบงาน</button>
-        <button class="btn btn-sm btn-danger" onclick="delTask('${t.id}')">🗑</button>`:''}
-        ${!isAdm&&isDone?`<span class="tag" style="background:#E1F5EE;color:#085041">งานจบแล้ว</span>`:''}
-      </div>
+        <button class="btn btn-sm" style="background:#E1F5EE;color:#085041;border-color:#085041" onclick="finishTask('${t.id}')" title="จบงาน">✅</button>
+        <button class="btn btn-sm btn-danger" onclick="delTask('${t.id}')">🗑</button>
+      </div>`:''}
     </div>
     ${stackedBar(t.prevProgress,t.progress)}
     <div class="task-meta">
-      ${t.startDate?`<span>รับงาน ${t.startDate}</span>`:''}
+      ${startDisplay?`<span>รับงาน ${startDisplay}</span>`:''}
       ${days!=null?`<span class="days-badge">ดำเนินการมา ${days} วัน</span>`:''}
     </div>
   </div>`;
@@ -673,8 +683,6 @@ function renderAdminAll(){
   let doneList=tasks.filter(t=>t.done===true);
   if(ef){active=active.filter(t=>t.emp===ef);doneList=doneList.filter(t=>t.emp===ef);}
   if(sf){active=active.filter(t=>t.status===sf);doneList=doneList.filter(t=>t.status===sf);}
-
-  // sort
   const empNames=Object.fromEntries(Object.entries(EMP).map(([id,e])=>[id,e.name]));
   if(sortBy==='priority'){
     active.sort((a,b)=>(PRI_ORDER[a.priority||'normal']||3)-(PRI_ORDER[b.priority||'normal']||3)||Number(b.ts)-Number(a.ts));
@@ -683,23 +691,16 @@ function renderAdminAll(){
   } else if(sortBy==='status'){
     active.sort((a,b)=>(STATUS_ORDER[a.status]||0)-(STATUS_ORDER[b.status]||0)||(empNames[a.emp]||'').localeCompare(empNames[b.emp]||'','th'));
   } else if(sortBy==='date'){
-    active.sort((a,b)=>{
-      const da=(a.startDate||'').toString().slice(0,10);
-      const db=(b.startDate||'').toString().slice(0,10);
-      return da.localeCompare(db);
-    });
+    active.sort((a,b)=>(a.startDate||'').toString().slice(0,10).localeCompare((b.startDate||'').toString().slice(0,10)));
   }
-
   const el=document.getElementById('adm-all-list');
-
-  // ถ้าเรียงตามคนหรือสถานะ ให้แสดงหัวกลุ่มด้วย
   let html='';
   if(sortBy==='emp'&&!ef){
     let lastEmp=null;
     active.forEach(t=>{
       if(t.emp!==lastEmp){
         const emp=EMP[t.emp];
-        html+=`<div style="font-size:11px;font-weight:700;color:var(--primary);padding:6px 8px 3px;margin-top:${lastEmp?'6px':'0'};border-top:${lastEmp?'1px solid var(--border)':'none'}">${emp?emp.name:t.emp}</div>`;
+        html+=`<div style="font-size:11px;font-weight:700;color:var(--primary);padding:6px 8px 3px;${lastEmp?'margin-top:6px;border-top:1px solid var(--border)':''}">${emp?emp.name:t.emp}</div>`;
         lastEmp=t.emp;
       }
       html+=compactRow(t,false);
@@ -709,17 +710,15 @@ function renderAdminAll(){
     active.forEach(t=>{
       if(t.status!==lastStatus){
         const sc=STATUS_COLORS[t.status]||{bg:'#F1EFE8',tc:'#444441'};
-        html+=`<div style="font-size:11px;font-weight:700;padding:6px 8px 3px;margin-top:${lastStatus?'4px':'0'};border-top:${lastStatus?'1px solid var(--border)':'none'};color:${sc.tc}">${t.status}</div>`;
+        html+=`<div style="font-size:11px;font-weight:700;padding:6px 8px 3px;${lastStatus?'margin-top:4px;border-top:1px solid var(--border)':''}color:${sc.tc}">${t.status}</div>`;
         lastStatus=t.status;
       }
       html+=compactRow(t,true);
     });
   } else {
-    html=active.length?active.map(t=>compactRow(t,true)).join(''):'';
+    html=active.map(t=>compactRow(t,true)).join('');
   }
-
   if(!active.length) html='<div class="empty">ไม่พบงานที่กำลังดำเนินการ</div>';
-
   if(doneList.length){
     html+=`<div style="font-size:11px;font-weight:600;color:#0F6E56;padding:8px 0 4px;margin-top:4px;border-top:1px dashed var(--border)">✅ งานที่จบแล้ว (${doneList.length} งาน)</div>`;
     html+=doneList.map(t=>compactRow(t,true)).join('');
