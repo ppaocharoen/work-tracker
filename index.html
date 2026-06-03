@@ -540,6 +540,19 @@ function compactRow(t,showEmp){
   const days=daysSince(t.startDate);
   const isDone=t.done===true;
   const subLabel=t.subcat&&t.subcat!=='อื่นๆ : ระบุในชื่องาน'?t.subcat:'';
+  // แสดงวันที่อัปเดตล่าสุด (ค.ศ. → พ.ศ.)
+  let updatedStr='';
+  if(t.updatedAt){
+    const d=new Date(Number(t.updatedAt));
+    if(!isNaN(d.getTime())){
+      const dd=d.getDate().toString().padStart(2,'0');
+      const mm=(d.getMonth()+1).toString().padStart(2,'0');
+      const yy=d.getFullYear()+543;
+      const hh=d.getHours().toString().padStart(2,'0');
+      const min=d.getMinutes().toString().padStart(2,'0');
+      updatedStr=`${dd}/${mm}/${yy} ${hh}:${min}`;
+    }
+  }
   return `<div class="task-row" style="${isDone?'opacity:0.6':''}">
     <div style="width:3px;min-height:22px;border-radius:2px;background:${isDone?'#1D9E75':pri.border};flex-shrink:0;align-self:stretch;-webkit-print-color-adjust:exact;print-color-adjust:exact"></div>
     <div class="tr-name">
@@ -547,6 +560,7 @@ function compactRow(t,showEmp){
       <span style="font-weight:600">${isDone?'✅ ':''}${t.name}</span>
       ${subLabel?`<span style="font-size:10px;color:var(--text3)"> · ${subLabel}</span>`:''}
       ${t.desc?`<br><span style="font-size:10px;color:var(--text2)">${t.desc}</span>`:''}
+      <br><span style="font-size:10px;color:var(--text3)">🕐 ${updatedStr?'อัปเดต '+updatedStr:'ยังไม่มีการอัปเดต'}</span>
     </div>
     <div class="tr-status">
       <span class="tag" style="background:${sc.bg};color:${sc.tc};font-size:10px;padding:1px 5px">${t.status}</span>
@@ -934,14 +948,14 @@ async function saveProgress(){
   const newProg=parseInt(document.getElementById('pg-prog').value);
   const newStatus=document.getElementById('pg-status').value;
   const statusChanged=newStatus!==t.status;
+  const now=Date.now();
   const task={
     ...t,
     status:newStatus,
-    // ถ้าเปลี่ยนสถานะ → prevProgress=0 (เริ่มนับใหม่), progress=ค่าใหม่
-    // ถ้าสถานะเดิม → prevProgress=progress เก่า, progress=ค่าใหม่
     prevProgress:statusChanged?0:Number(t.progress)||0,
     progress:newProg,
-    ts:Date.now(),
+    ts:now,
+    updatedAt:now,
   };
   const btn=document.getElementById('prog-save-btn');
   btn.innerHTML='<span class="spinner"></span>กำลังบันทึก...';btn.disabled=true;
