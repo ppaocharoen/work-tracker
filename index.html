@@ -542,8 +542,9 @@ function compactRow(t,showEmp){
   const subLabel=t.subcat&&t.subcat!=='อื่นๆ : ระบุในชื่องาน'?t.subcat:'';
   // แสดงวันที่อัปเดตล่าสุด (ค.ศ. → พ.ศ.)
   let updatedStr='';
-  if(t.updatedAt){
-    const d=new Date(Number(t.updatedAt));
+  const updatedAt=Number(t.updatedAt);
+  if(updatedAt>0){
+    const d=new Date(updatedAt);
     if(!isNaN(d.getTime())){
       const dd=d.getDate().toString().padStart(2,'0');
       const mm=(d.getMonth()+1).toString().padStart(2,'0');
