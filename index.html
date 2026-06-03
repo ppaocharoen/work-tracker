@@ -117,13 +117,17 @@ body.dark .days-badge{background:#1A3550;color:#7DB8E8}
   .sync-bar,.tabs-wrap,.btn,.credit{display:none!important}
   .card{break-inside:avoid;border:1px solid #ccc!important;box-shadow:none;margin-bottom:5px;padding:6px!important}
   .print-header{display:block!important}
-  .group-header{background:#eee!important;color:#333!important}
+  .group-header{background:#eee!important;color:#333!important;break-after:avoid;break-inside:avoid}
   .stacked-bar{background:#eee!important}
   .bar-prev,.tr-prog-prev{background:#AFA9EC!important}
   .bar-new,.tr-prog-new{background:#534AB7!important}
   .task-row:nth-child(even){background:#fafafa!important}
   .metrics{break-inside:avoid}
-  .section-title{color:#000!important}
+  .section-title{color:#000!important;break-after:avoid}
+  /* ห้ามตัดหน้าระหว่าง group header กับ card แรก */
+  .emp-group{break-inside:avoid-page}
+  .emp-group-header{break-after:avoid;break-inside:avoid}
+  .emp-group-body{break-before:avoid}
 }
 .print-header{display:none;text-align:center;padding:10px 0 8px;border-bottom:2px solid #333;margin-bottom:10px}
 .print-header h2{font-size:14px;font-weight:700;margin-bottom:2px}
@@ -372,7 +376,7 @@ body.dark .days-badge{background:#1A3550;color:#7DB8E8}
 </div>
 
 <script>
-const API='https://script.google.com/macros/s/AKfycbwiCyJ9nv8UeOnUINEJ2CYnb8V5dPY43I5-F-lEtmInnAeMjniopUEXbYuOA9kMqCr1bQ/exec';
+const API='https://script.google.com/macros/s/AKfycbz1yRQWxQbvNIqu7IbmBBZBybKH7d6CrXSQatS4LLGtPmSr4lfQHECqTFSDbpipodV-SQ/exec';
 const EMP={
   e1:{name:'นภดล ละมุนเมือง',pos:'สถาปนิกชำนาญการพิเศษ',bg:'#EEEDFE',tc:'#3C3489'},
   e2:{name:'ทวี ทับทิมศรี',pos:'นายช่างโยธาอาวุโส',bg:'#E1F5EE',tc:'#085041'},
@@ -525,7 +529,7 @@ function tCard(t,isAdm){
   </div>`;
 }
 
-// compact row (admin summary)
+// compact row (admin summary - 1 line)
 function compactRow(t,showEmp){
   const emp=EMP[t.emp];
   const sc=STATUS_COLORS[t.status]||{bg:'#F1EFE8',tc:'#444441'};
@@ -536,14 +540,6 @@ function compactRow(t,showEmp){
   const days=daysSince(t.startDate);
   const isDone=t.done===true;
   const subLabel=t.subcat&&t.subcat!=='อื่นๆ : ระบุในชื่องาน'?t.subcat:'';
-  // แสดงวันที่อัปเดตล่าสุด
-  let updatedStr='';
-  if(t.updatedAt){
-    const d=new Date(Number(t.updatedAt));
-    if(!isNaN(d)){
-      updatedStr=`${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getFullYear()+543} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
-    }
-  }
   return `<div class="task-row" style="${isDone?'opacity:0.6':''}">
     <div style="width:3px;min-height:22px;border-radius:2px;background:${isDone?'#1D9E75':pri.border};flex-shrink:0;align-self:stretch;-webkit-print-color-adjust:exact;print-color-adjust:exact"></div>
     <div class="tr-name">
@@ -551,7 +547,6 @@ function compactRow(t,showEmp){
       <span style="font-weight:600">${isDone?'✅ ':''}${t.name}</span>
       ${subLabel?`<span style="font-size:10px;color:var(--text3)"> · ${subLabel}</span>`:''}
       ${t.desc?`<br><span style="font-size:10px;color:var(--text2)">${t.desc}</span>`:''}
-      ${updatedStr?`<br><span style="font-size:10px;color:var(--text3)">🕐 อัปเดต ${updatedStr}</span>`:'<br><span style="font-size:10px;color:var(--text3)">ยังไม่มีการอัปเดต</span>'}
     </div>
     <div class="tr-status">
       <span class="tag" style="background:${sc.bg};color:${sc.tc};font-size:10px;padding:1px 5px">${t.status}</span>
@@ -691,10 +686,15 @@ function renderAdminByEmp(){
     const active=tasks.filter(t=>t.emp===id&&!(t.done===true)).sort((a,b)=>(PRI_ORDER[a.priority||'normal']||3)-(PRI_ORDER[b.priority||'normal']||3));
     const done=tasks.filter(t=>t.emp===id&&(t.done===true));
     if(!active.length&&!done.length) return;
-    html+=`<div class="group-header">👤 ${emp.name} — ${emp.pos} (${active.length} งานกำลังทำ${done.length?' / '+done.length+' จบแล้ว':''})</div>`;
-    let rows=active.map(t=>compactRow(t,false)).join('');
-    if(done.length) rows+=`<div style="font-size:10px;color:#0F6E56;padding:4px 8px;border-top:1px dashed #ddd">✅ จบแล้ว: `+done.map(t=>`<b>${t.name}</b>`).join(', ')+'</div>';
-    html+='<div class="card" style="padding:4px 6px;margin-bottom:6px">'+rows+'</div>';
+    // ห่อทั้ง header + card ด้วย emp-group เพื่อป้องกันตัดหน้า
+    html+=`<div class="emp-group" style="margin-bottom:8px">`;
+    html+=`<div class="emp-group-header group-header">👤 ${emp.name} — ${emp.pos} (${active.length} งานกำลังทำ${done.length?' / '+done.length+' จบแล้ว':''})</div>`;
+    html+=`<div class="emp-group-body card" style="padding:4px 6px;margin-bottom:0">`;
+    html+=active.map(t=>compactRow(t,false)).join('');
+    if(done.length){
+      html+=`<div style="font-size:10px;color:#0F6E56;padding:4px 8px;border-top:1px dashed #ddd">✅ จบแล้ว: `+done.map(t=>`<b>${t.name}</b>`).join(', ')+'</div>';
+    }
+    html+=`</div></div>`;
   });
   document.getElementById('adm-byemp-list').innerHTML=html||'<div class="empty">ไม่มีงาน</div>';
 }
@@ -707,10 +707,14 @@ function renderAdminCat(){
     const active=tasks.filter(t=>t.cat===cat&&!(t.done===true)).sort((a,b)=>(a.subcat||'').localeCompare(b.subcat||'','th'));
     const done=tasks.filter(t=>t.cat===cat&&(t.done===true));
     if(!active.length&&!done.length) return;
-    html+=`<div class="group-header">📁 ${CLABELS[cat]} (${active.length} งานกำลังทำ${done.length?' / '+done.length+' จบแล้ว':''})</div>`;
-    let rows=active.map(t=>compactRow(t,true)).join('');
-    if(done.length){rows+=`<div style="font-size:10px;color:#0F6E56;padding:4px 8px;border-top:1px dashed #ddd">✅ จบแล้ว: `+done.map(t=>`<b>${t.name}</b>`).join(', ')+'</div>';}
-    html+='<div class="card" style="padding:4px 6px;margin-bottom:6px">'+rows+'</div>';
+    html+=`<div class="emp-group" style="margin-bottom:8px">`;
+    html+=`<div class="emp-group-header group-header">📁 ${CLABELS[cat]} (${active.length} งานกำลังทำ${done.length?' / '+done.length+' จบแล้ว':''})</div>`;
+    html+=`<div class="emp-group-body card" style="padding:4px 6px;margin-bottom:0">`;
+    html+=active.map(t=>compactRow(t,true)).join('');
+    if(done.length){
+      html+=`<div style="font-size:10px;color:#0F6E56;padding:4px 8px;border-top:1px dashed #ddd">✅ จบแล้ว: `+done.map(t=>`<b>${t.name}</b>`).join(', ')+'</div>';
+    }
+    html+=`</div></div>`;
   });
   document.getElementById('adm-cat-list').innerHTML=html||'<div class="empty">ไม่มีงาน</div>';
 }
@@ -721,14 +725,18 @@ function renderAdminPri(){
     const active=tasks.filter(t=>(t.priority||'normal')===pri&&!(t.done===true)).sort((a,b)=>(EMP[a.emp]?.name||'').localeCompare(EMP[b.emp]?.name||'','th'));
     if(!active.length) return;
     const p=PRIORITY[pri];
-    html+=`<div class="group-header" style="background:${p.bg};color:${p.tc};-webkit-print-color-adjust:exact;print-color-adjust:exact">⚡ ${p.label} (${active.length} งาน)</div>`;
-    html+='<div class="card" style="padding:4px 6px;margin-bottom:6px">'+active.map(t=>compactRow(t,true)).join('')+'</div>';
+    html+=`<div class="emp-group" style="margin-bottom:8px">`;
+    html+=`<div class="emp-group-header group-header" style="background:${p.bg};color:${p.tc};-webkit-print-color-adjust:exact;print-color-adjust:exact">⚡ ${p.label} (${active.length} งาน)</div>`;
+    html+=`<div class="emp-group-body card" style="padding:4px 6px;margin-bottom:0">${active.map(t=>compactRow(t,true)).join('')}</div>`;
+    html+=`</div>`;
   });
   // งานจบแล้วทั้งหมด
   const doneAll=tasks.filter(t=>t.done===true);
   if(doneAll.length){
-    html+=`<div class="group-header" style="background:#E1F5EE;color:#085041">✅ งานที่จบแล้วทั้งหมด (${doneAll.length} งาน)</div>`;
-    html+='<div class="card" style="padding:4px 6px;margin-bottom:6px">'+doneAll.map(t=>compactRow(t,true)).join('')+'</div>';
+    html+=`<div class="emp-group" style="margin-bottom:8px">`;
+    html+=`<div class="emp-group-header group-header" style="background:#E1F5EE;color:#085041">✅ งานที่จบแล้วทั้งหมด (${doneAll.length} งาน)</div>`;
+    html+=`<div class="emp-group-body card" style="padding:4px 6px;margin-bottom:0">${doneAll.map(t=>compactRow(t,true)).join('')}</div>`;
+    html+=`</div>`;
   }
   document.getElementById('adm-pri-list').innerHTML=html||'<div class="empty">ไม่มีงาน</div>';
 }
@@ -926,7 +934,6 @@ async function saveProgress(){
   const newProg=parseInt(document.getElementById('pg-prog').value);
   const newStatus=document.getElementById('pg-status').value;
   const statusChanged=newStatus!==t.status;
-  const now=Date.now();
   const task={
     ...t,
     status:newStatus,
@@ -934,8 +941,7 @@ async function saveProgress(){
     // ถ้าสถานะเดิม → prevProgress=progress เก่า, progress=ค่าใหม่
     prevProgress:statusChanged?0:Number(t.progress)||0,
     progress:newProg,
-    ts:now,
-    updatedAt:now,
+    ts:Date.now(),
   };
   const btn=document.getElementById('prog-save-btn');
   btn.innerHTML='<span class="spinner"></span>กำลังบันทึก...';btn.disabled=true;
