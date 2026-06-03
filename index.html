@@ -471,8 +471,8 @@ async function fetchTasks(who){
       ...t,
       progress:Number(t.progress)||0,
       prevProgress:Number(t.prevProgress)||0,
-      // normalize done — Sheet อาจส่งกลับมาเป็น TRUE/true/1/"true"
-      done: t.done===true||t.done==='TRUE'||t.done===1||t.done==='1',
+      done: t.done===true||t.done==='true'||t.done==='TRUE'||t.done===1||t.done==='1',
+      updatedAt: t.updatedAt&&Number(t.updatedAt)>0 ? Number(t.updatedAt) : 0,
     }));
     setDot(who,'ok');return true;
   }catch(e){setDot(who,'error');showToast('เชื่อมต่อไม่ได้ — ลองรีเฟรชอีกครั้ง');return false;}
