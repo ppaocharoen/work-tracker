@@ -422,6 +422,9 @@ const STATUS_ORDER={'สำรวจ/ออกแบบ':0,'เขียนแ�
 const PRI_ORDER={urgent1:0,urgent2:1,urgent3:2,normal:3,park:4};
 let me=null,tasks=[],editId=null,currentTab='team';
 
+// XSS escape — ใช้ทุกจุดที่ inject user data เข้า innerHTML
+function esc(s){const d=document.createElement('div');d.textContent=s==null?'':String(s);return d.innerHTML;}
+
 // dark mode
 function toggleDark(){
   document.body.classList.toggle('dark');
@@ -432,7 +435,7 @@ if(localStorage.getItem('dark')==='1') document.body.classList.add('dark');
 // JSONP
 function jsonp(params){
   return new Promise((resolve,reject)=>{
-    const cb='cb_'+Date.now()+'_'+Math.floor(Math.random()*9999);
+    const cb='cb_'+(crypto.randomUUID?crypto.randomUUID():Date.now()+'_'+Math.random()).replace(/-/g,'');
     const t=setTimeout(()=>{delete window[cb];reject(new Error('timeout'));},20000);
     window[cb]=function(d){clearTimeout(t);delete window[cb];document.getElementById('js_'+cb)?.remove();resolve(d);};
     const qs=Object.entries(params).map(([k,v])=>k+'='+encodeURIComponent(v)).join('&');
@@ -514,21 +517,21 @@ function tCard(t,isAdm){
   return `<div class="card" style="border-left:3px solid ${isDone?'#1D9E75':pri.border};${isDone?'opacity:0.75':''}">
     <div class="task-hdr">
       <div class="task-info">
-        ${isAdm&&emp?`<p style="font-size:11px;color:var(--text2);margin-bottom:2px">${emp.name} · ${emp.pos}</p>`:''}
-        <p style="font-size:11px;color:var(--text2);margin-bottom:2px">${t.cat||''}${subLabel?' · '+subLabel:''}</p>
-        <p class="task-title">${isDone?'✅ ':''}${t.name}</p>
-        ${t.desc?`<p class="task-desc">${t.desc}</p>`:''}
+        ${isAdm&&emp?`<p style="font-size:11px;color:var(--text2);margin-bottom:2px">${esc(emp.name)} · ${esc(emp.pos)}</p>`:''}
+        <p style="font-size:11px;color:var(--text2);margin-bottom:2px">${esc(t.cat||'')}${subLabel?' · '+esc(subLabel):''}</p>
+        <p class="task-title">${isDone?'✅ ':''}${esc(t.name)}</p>
+        ${t.desc?`<p class="task-desc">${esc(t.desc)}</p>`:''}
         <div class="task-tags">
-          <span class="tag" style="background:${pri.bg};color:${pri.tc}">${pri.label}</span>
-          <span class="tag" style="background:${sc.bg};color:${sc.tc}">${t.status}</span>
+          <span class="tag" style="background:${pri.bg};color:${pri.tc}">${esc(pri.label)}</span>
+          <span class="tag" style="background:${sc.bg};color:${sc.tc}">${esc(t.status)}</span>
           ${isDone&&!isAdm?`<span class="tag" style="background:#D1FAE5;color:#065F46">จบงานแล้ว</span>`:''}
         </div>
       </div>
       ${!isAdm&&!isDone?`<div class="task-actions">
-        <button class="btn btn-sm" onclick="openProgress('${t.id}')" title="อัปเดตความก้าวหน้า">📊</button>
-        <button class="btn btn-sm" onclick="openEdit('${t.id}')" title="แก้ไขรายละเอียด">✏️</button>
-        <button class="btn btn-sm" style="background:#E1F5EE;color:#085041;border-color:#085041" onclick="finishTask('${t.id}')" title="จบงาน">✅</button>
-        <button class="btn btn-sm btn-danger" onclick="delTask('${t.id}')">🗑</button>
+        <button class="btn btn-sm" onclick="openProgress('${esc(t.id)}')" title="อัปเดตความก้าวหน้า">📊</button>
+        <button class="btn btn-sm" onclick="openEdit('${esc(t.id)}')" title="แก้ไขรายละเอียด">✏️</button>
+        <button class="btn btn-sm" style="background:#E1F5EE;color:#085041;border-color:#085041" onclick="finishTask('${esc(t.id)}')" title="จบงาน">✅</button>
+        <button class="btn btn-sm btn-danger" onclick="delTask('${esc(t.id)}')">🗑</button>
       </div>`:''}
     </div>
     ${stackedBar(t.prevProgress,t.progress)}
@@ -568,14 +571,14 @@ function compactRow(t,showEmp){
   return `<div class="task-row" style="${isDone?'opacity:0.6':''}">
     <div style="width:3px;min-height:22px;border-radius:2px;background:${isDone?'#1D9E75':pri.border};flex-shrink:0;align-self:stretch;-webkit-print-color-adjust:exact;print-color-adjust:exact"></div>
     <div class="tr-name">
-      ${showEmp&&emp?`<span style="font-size:10px;color:var(--text3)">${emp.name} · </span>`:''}
-      <span style="font-weight:600">${isDone?'✅ ':''}${t.name}</span>
-      ${subLabel?`<span style="font-size:10px;color:var(--text3)"> · ${subLabel}</span>`:''}
-      ${t.desc?`<br><span style="font-size:10px;color:var(--text2)">${t.desc}</span>`:''}
+      ${showEmp&&emp?`<span style="font-size:10px;color:var(--text3)">${esc(emp.name)} · </span>`:''}
+      <span style="font-weight:600">${isDone?'✅ ':''}${esc(t.name)}</span>
+      ${subLabel?`<span style="font-size:10px;color:var(--text3)"> · ${esc(subLabel)}</span>`:''}
+      ${t.desc?`<br><span style="font-size:10px;color:var(--text2)">${esc(t.desc)}</span>`:''}
       <br><span style="font-size:10px;color:var(--text3)">🕐 ${updatedStr?'อัปเดต '+updatedStr:'ยังไม่มีการอัปเดต'}</span>
     </div>
     <div class="tr-status">
-      <span class="tag" style="background:${sc.bg};color:${sc.tc};font-size:10px;padding:1px 5px">${t.status}</span>
+      <span class="tag" style="background:${sc.bg};color:${sc.tc};font-size:10px;padding:1px 5px">${esc(t.status)}</span>
     </div>
     <div class="tr-prog">
       <div style="font-size:10px;color:var(--text3);text-align:right">${prev}%→${cur}%</div>
@@ -614,7 +617,7 @@ function renderEmp(){
   } else if(sortBy==='cat'&&!filterCat){
     let lastCat=null;
     mt.forEach(t=>{
-      if(t.cat!==lastCat){html+=`<p style="font-size:12px;font-weight:600;color:var(--primary);margin:10px 0 5px;padding-bottom:3px;border-bottom:1px solid var(--border)">${t.cat||'ไม่ระบุหมวด'}</p>`;lastCat=t.cat;}
+      if(t.cat!==lastCat){html+=`<p style="font-size:12px;font-weight:600;color:var(--primary);margin:10px 0 5px;padding-bottom:3px;border-bottom:1px solid var(--border)">${esc(t.cat||'ไม่ระบุหมวด')}</p>`;lastCat=t.cat;}
       html+=tCard(t,false);
     });
   } else {
@@ -718,7 +721,7 @@ function renderAdminByEmp(){
     html+=`<div class="emp-group-body card" style="padding:4px 6px;margin-bottom:0">`;
     html+=active.map(t=>compactRow(t,false)).join('');
     if(done.length){
-      html+=`<div style="font-size:10px;color:#0F6E56;padding:4px 8px;border-top:1px dashed #ddd">✅ จบแล้ว: `+done.map(t=>`<b>${t.name}</b>`).join(', ')+'</div>';
+      html+=`<div style="font-size:10px;color:#0F6E56;padding:4px 8px;border-top:1px dashed #ddd">✅ จบแล้ว: `+done.map(t=>`<b>${esc(t.name)}</b>`).join(', ')+'</div>';
     }
     html+=`</div></div>`;
   });
@@ -738,7 +741,7 @@ function renderAdminCat(){
     html+=`<div class="emp-group-body card" style="padding:4px 6px;margin-bottom:0">`;
     html+=active.map(t=>compactRow(t,true)).join('');
     if(done.length){
-      html+=`<div style="font-size:10px;color:#0F6E56;padding:4px 8px;border-top:1px dashed #ddd">✅ จบแล้ว: `+done.map(t=>`<b>${t.name}</b>`).join(', ')+'</div>';
+      html+=`<div style="font-size:10px;color:#0F6E56;padding:4px 8px;border-top:1px dashed #ddd">✅ จบแล้ว: `+done.map(t=>`<b>${esc(t.name)}</b>`).join(', ')+'</div>';
     }
     html+=`</div></div>`;
   });
@@ -932,9 +935,9 @@ function updateProgPreview(prev,old,newVal,oldStatus,newStatus){
   const diff=newVal-old;
   const statusChanged=oldStatus&&newStatus&&oldStatus!==newStatus;
   document.getElementById('prog-bar-preview').innerHTML=`
-    ${statusChanged?`<div style="background:#FAEEDA;color:#633806;border-radius:6px;padding:5px 10px;font-size:11px;margin-bottom:8px">🔄 เปลี่ยนจาก <b>${oldStatus}</b> → <b>${newStatus}</b><br>ความก้าวหน้าเริ่มนับใหม่สำหรับสถานะนี้</div>`:''}
+    ${statusChanged?`<div style="background:#FAEEDA;color:#633806;border-radius:6px;padding:5px 10px;font-size:11px;margin-bottom:8px">🔄 เปลี่ยนจาก <b>${esc(oldStatus)}</b> → <b>${esc(newStatus)}</b><br>ความก้าวหน้าเริ่มนับใหม่สำหรับสถานะนี้</div>`:''}
     <div style="font-size:11px;color:var(--text2);margin-bottom:3px;display:flex;justify-content:space-between">
-      <span>ความก้าวหน้า ${newStatus||''}</span><span style="font-weight:600">${c}%</span>
+      <span>ความก้าวหน้า ${esc(newStatus||'')}</span><span style="font-weight:600">${c}%</span>
     </div>
     <div class="stacked-bar">
       <div class="bar-prev" style="width:${p}%"></div>
